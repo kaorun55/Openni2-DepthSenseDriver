@@ -1,23 +1,28 @@
 /*****************************************************************************
-*                                                                            *
-*  OpenNI 2.x Alpha                                                          *
-*  Copyright (C) 2012 PrimeSense Ltd.                                        *
-*                                                                            *
-*  This file is part of OpenNI.                                              *
-*                                                                            *
-*  Licensed under the Apache License, Version 2.0 (the "License");           *
-*  you may not use this file except in compliance with the License.          *
-*  You may obtain a copy of the License at                                   *
-*                                                                            *
-*      http://www.apache.org/licenses/LICENSE-2.0                            *
-*                                                                            *
-*  Unless required by applicable law or agreed to in writing, software       *
-*  distributed under the License is distributed on an "AS IS" BASIS,         *
-*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  *
-*  See the License for the specific language governing permissions and       *
-*  limitations under the License.                                            *
-*                                                                            *
+The MIT License (MIT)
+
+Copyright (c) 2013 Kaoru NAKAMURA, Tomoto WASHIO
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+This file is derived from DummyDevice.cpp provided by OpenNI 2.0.
 *****************************************************************************/
+
 #include "Driver/OniDriverAPI.h"
 #include "XnLib.h"
 #include "XnHash.h"
@@ -249,6 +254,7 @@ public:
 		m_nodeMap[m_colorNode] = this;
 	}
 
+	// Create color stream of DepthSense SDK
 	// DepthSense SDK のカラーストリームを作成
 	void configureColorNode()
 	{
@@ -279,6 +285,7 @@ public:
 		m_data.resize( w * h * 3 );
 	}
 
+	// Callback to update the frame of the color stream
 	// カラーストリームのフレーム更新コールバック関数
 	static void onNewColorSample( DepthSense::ColorNode node,
 		                          DepthSense::ColorNode::NewSampleReceivedData data)
@@ -410,12 +417,14 @@ public:
 	{
 		if (sensorType == ONI_SENSOR_DEPTH)
 		{
+			// Find the depth node
 			// Depth ノードを探す
 	        std::vector<DepthSense::Node> nodes = m_device.getNodes();
 			auto it = std::find_if( nodes.begin(), nodes.end(), []( DepthSense::Node& val ) {
 				return val.is<DepthSense::DepthNode>();
 			} );
 
+			// Create the depth stream
 			// Depth ストリームを作成する
 			if ( it != nodes.end() ) {
 				DepthSenseDepthStream* pImage = XN_NEW( DepthSenseDepthStream, m_context, *it );
@@ -424,12 +433,14 @@ public:
 		}
 		if (sensorType == ONI_SENSOR_COLOR)
 		{
+			// Find the color node
 			// カラーノードを探す
 	        std::vector<DepthSense::Node> nodes = m_device.getNodes();
 			auto it = std::find_if( nodes.begin(), nodes.end(), []( DepthSense::Node& val ) {
 				return val.is<DepthSense::ColorNode>();
 			} );
 
+			// Create the color stream
 			// カラーストリームを作成する
 			if ( it != nodes.end() ) {
 				DepthSenseImageStream* pImage = XN_NEW( DepthSenseImageStream, m_context, *it );
@@ -492,6 +503,7 @@ public:
 	DepthSenseDriver(OniDriverServices* pDriverServices) : DriverBase(pDriverServices)
 	{}
 
+	// Initialize the driver
 	// ドライバを初期化する
 	virtual OniStatus initialize(
 		oni::driver::DeviceConnectedCallback connectedCallback,
@@ -501,13 +513,16 @@ public:
 	{
 		oni::driver::DriverBase::initialize(connectedCallback, disconnectedCallback, deviceStateChangedCallback, pCookie);
 
+		// Connect to the DepthSense device
 		// DepthSense デバイスに接続する
 		m_context = DepthSense::Context::create("localhost");
 
+		// Enumerate the connected devices
 		// 接続されているデバイスの情報を作成する
 		m_depthSenseDevices = m_context.getDevices();
 		int deviceIndex = 0;
 		for ( auto it = m_depthSenseDevices.begin(); it != m_depthSenseDevices.end(); ++it ) {
+			// Populate the device information
 			// デバイス情報をコピーする
 			OniDeviceInfo* pInfo = XN_NEW(OniDeviceInfo);
 			xnOSStrCopy(pInfo->vendor, "DepthSense", ONI_MAX_STR);
@@ -516,14 +531,17 @@ public:
 			XnUInt32 uriLen;
 			xnOSStrFormat(pInfo->uri, ONI_MAX_STR, &uriLen, "%s/%d", pInfo->name, deviceIndex++);
 
+			// Register the device information with the map
 			// デバイス情報を登録する
 			m_devices[pInfo] = NULL;
 
+			// Raise events
 			// デバイスの接続を通知する
 			deviceConnected(pInfo);
 			deviceStateChanged(pInfo, 0);
 		}
 
+		// Create the thread for main loop
 		// デバイスのメインループ用スレッドを生成する
 		xnOSCreateThread(threadFunc, this, &m_threadHandle);
 
@@ -542,6 +560,7 @@ public:
 
 				int deviceIndex = atoi(strrchr(uri, '/') + 1);
 
+				// Create the device instance
 				// デバイスインスタンスを生成する
 				DepthSenseDevice* pDevice = XN_NEW(DepthSenseDevice, iter->Key(), getServices(), m_context, m_depthSenseDevices[deviceIndex] );
 				iter->Value() = pDevice;
@@ -573,6 +592,7 @@ public:
 
 protected:
 
+	// Thread for mail loop
 	// デバイスのメインループ用スレッド
 	static XN_THREAD_PROC threadFunc(XN_THREAD_PARAM pThreadParam)
 	{
