@@ -1,9 +1,13 @@
 Openni2-DepthSenseDriver
 ========================
 
-- This is OpenNI 2 driver to use SoftKinetic devices through DepthSensor SDK.
+- This is the OpenNI 2 driver for SoftKinetic sensor devices (e.g. DS325).
 
-- This driver is still in the experimental stage. It just runs, but may have a lack of features or may be buggy.
+- Tested with OpenNI 2.2.0.30 (http://www.openni.org/openni-sdk/).
 
-- It does not run with NiTE because NiTE requires proprietary driver parameters.
+- Requires DepthSensor SDK (http://www.softkinetic.com/en-us/support/download.aspx) to build.
+
+- Still in the experimental stage. It just runs, but may have a lack of features or may be buggy.
+
+- Does not run with NiTE. NiTE requires proprietary driver parameters that we cannot implement.
 
