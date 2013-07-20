@@ -249,7 +249,7 @@ public:
 		m_nodeMap[m_colorNode] = this;
 	}
 
-	// DepthSense SDK ‚ÌƒJƒ‰[ƒXƒgƒŠ[ƒ€‚ğì¬
+	// DepthSense SDK ã®ã‚«ãƒ©ãƒ¼ã‚¹ãƒˆãƒªãƒ¼ãƒ ã‚’ä½œæˆ
 	void configureColorNode()
 	{
 		// connect new color sample handler
@@ -279,15 +279,21 @@ public:
 		m_data.resize( w * h * 3 );
 	}
 
-	// ƒJƒ‰[ƒXƒgƒŠ[ƒ€‚ÌƒtƒŒ[ƒ€XVƒR[ƒ‹ƒoƒbƒNŠÖ”
+	// ã‚«ãƒ©ãƒ¼ã‚¹ãƒˆãƒªãƒ¼ãƒ ã®ãƒ•ãƒ¬ãƒ¼ãƒ æ›´æ–°ã‚³ãƒ¼ãƒ«ãƒãƒƒã‚¯é–¢æ•°
 	static void onNewColorSample( DepthSense::ColorNode node,
 		                          DepthSense::ColorNode::NewSampleReceivedData data)
 	{
 		DepthSenseImageStream* pStream = m_nodeMap[node];
 		if ( pStream ) {
-			//fprintf( stderr, "onNewColorSample\n" );
-
-			xnOSMemCopy( &pStream->m_data[0], data.colorMap,  pStream->m_data.size() );
+			unsigned char* d = &pStream->m_data[0];
+			const unsigned char* dend = d + pStream->m_data.size();
+			const unsigned char* s = data.colorMap;
+			while (d < dend) {
+				*(d++) = *(s+2);
+				*(d++) = *(s+1);
+				*(d++) = *(s+0);
+				s += 3;
+			}
 
 			pStream->m_osEvent.Set();
 		}
@@ -404,13 +410,13 @@ public:
 	{
 		if (sensorType == ONI_SENSOR_DEPTH)
 		{
-			// Depth ƒm[ƒh‚ğ’T‚·
+			// Depth ãƒãƒ¼ãƒ‰ã‚’æ¢ã™
 	        std::vector<DepthSense::Node> nodes = m_device.getNodes();
 			auto it = std::find_if( nodes.begin(), nodes.end(), []( DepthSense::Node& val ) {
 				return val.is<DepthSense::DepthNode>();
 			} );
 
-			// Depth ƒXƒgƒŠ[ƒ€‚ğì¬‚·‚é
+			// Depth ã‚¹ãƒˆãƒªãƒ¼ãƒ ã‚’ä½œæˆã™ã‚‹
 			if ( it != nodes.end() ) {
 				DepthSenseDepthStream* pImage = XN_NEW( DepthSenseDepthStream, m_context, *it );
 				return pImage;
@@ -418,13 +424,13 @@ public:
 		}
 		if (sensorType == ONI_SENSOR_COLOR)
 		{
-			// ƒJƒ‰[ƒm[ƒh‚ğ’T‚·
+			// ã‚«ãƒ©ãƒ¼ãƒãƒ¼ãƒ‰ã‚’æ¢ã™
 	        std::vector<DepthSense::Node> nodes = m_device.getNodes();
 			auto it = std::find_if( nodes.begin(), nodes.end(), []( DepthSense::Node& val ) {
 				return val.is<DepthSense::ColorNode>();
 			} );
 
-			// ƒJƒ‰[ƒXƒgƒŠ[ƒ€‚ğì¬‚·‚é
+			// ã‚«ãƒ©ãƒ¼ã‚¹ãƒˆãƒªãƒ¼ãƒ ã‚’ä½œæˆã™ã‚‹
 			if ( it != nodes.end() ) {
 				DepthSenseImageStream* pImage = XN_NEW( DepthSenseImageStream, m_context, *it );
 				return pImage;
@@ -486,7 +492,7 @@ public:
 	DepthSenseDriver(OniDriverServices* pDriverServices) : DriverBase(pDriverServices)
 	{}
 
-	// ƒhƒ‰ƒCƒo‚ğ‰Šú‰»‚·‚é
+	// ãƒ‰ãƒ©ã‚¤ãƒã‚’åˆæœŸåŒ–ã™ã‚‹
 	virtual OniStatus initialize(
 		oni::driver::DeviceConnectedCallback connectedCallback,
 		oni::driver::DeviceDisconnectedCallback disconnectedCallback,
@@ -495,27 +501,30 @@ public:
 	{
 		oni::driver::DriverBase::initialize(connectedCallback, disconnectedCallback, deviceStateChangedCallback, pCookie);
 
-		// DepthSense ƒfƒoƒCƒX‚ÉÚ‘±‚·‚é
+		// DepthSense ãƒ‡ãƒã‚¤ã‚¹ã«æ¥ç¶šã™ã‚‹
 		m_context = DepthSense::Context::create("localhost");
 
-		// Ú‘±‚³‚ê‚Ä‚¢‚éƒfƒoƒCƒX‚Ìî•ñ‚ğì¬‚·‚é
+		// æ¥ç¶šã•ã‚Œã¦ã„ã‚‹ãƒ‡ãƒã‚¤ã‚¹ã®æƒ…å ±ã‚’ä½œæˆã™ã‚‹
 		m_depthSenseDevices = m_context.getDevices();
+		int deviceIndex = 0;
 		for ( auto it = m_depthSenseDevices.begin(); it != m_depthSenseDevices.end(); ++it ) {
-			// ƒfƒoƒCƒXî•ñ‚ğƒRƒs[‚·‚é
+			// ãƒ‡ãƒã‚¤ã‚¹æƒ…å ±ã‚’ã‚³ãƒ”ãƒ¼ã™ã‚‹
 			OniDeviceInfo* pInfo = XN_NEW(OniDeviceInfo);
 			xnOSStrCopy(pInfo->vendor, "DepthSense", ONI_MAX_STR);
 			xnOSStrCopy(pInfo->name, DepthSense::Device::Model_toString( it->getModel() ).c_str(), ONI_MAX_STR);
-			xnOSStrCopy(pInfo->uri, DepthSense::Device::Model_toString( it->getModel() ).c_str(), ONI_MAX_STR);
 
-			// ƒfƒoƒCƒXî•ñ‚ğ“o˜^‚·‚é
+			XnUInt32 uriLen;
+			xnOSStrFormat(pInfo->uri, ONI_MAX_STR, &uriLen, "%s/%d", pInfo->name, deviceIndex++);
+
+			// ãƒ‡ãƒã‚¤ã‚¹æƒ…å ±ã‚’ç™»éŒ²ã™ã‚‹
 			m_devices[pInfo] = NULL;
 
-			// ƒfƒoƒCƒX‚ÌÚ‘±‚ğ’Ê’m‚·‚é
+			// ãƒ‡ãƒã‚¤ã‚¹ã®æ¥ç¶šã‚’é€šçŸ¥ã™ã‚‹
 			deviceConnected(pInfo);
 			deviceStateChanged(pInfo, 0);
 		}
 
-		// ƒfƒoƒCƒX‚ÌƒƒCƒ“ƒ‹[ƒv—pƒXƒŒƒbƒh‚ğ¶¬‚·‚é
+		// ãƒ‡ãƒã‚¤ã‚¹ã®ãƒ¡ã‚¤ãƒ³ãƒ«ãƒ¼ãƒ—ç”¨ã‚¹ãƒ¬ãƒƒãƒ‰ã‚’ç”Ÿæˆã™ã‚‹
 		xnOSCreateThread(threadFunc, this, &m_threadHandle);
 
 		return ONI_STATUS_OK;
@@ -531,17 +540,10 @@ public:
 					return iter->Value();
 				}
 
-				// URI‚ÌƒfƒoƒCƒX‚ğ’T‚·
-				auto it = std::find_if( m_depthSenseDevices.begin(), m_depthSenseDevices.end(), 
-					[&uri]( DepthSense::Device& device ) {
-						return DepthSense::Device::Model_toString( device.getModel() ) == uri;
-					} );
-				if ( it == m_depthSenseDevices.end() ) {
-					throw std::runtime_error( "ƒfƒoƒCƒX‚ªŒ©‚Â‚©‚è‚Ü‚¹‚ñ" );
-				}
+				int deviceIndex = atoi(strrchr(uri, '/') + 1);
 
-				// ƒfƒoƒCƒXƒCƒ“ƒXƒ^ƒ“ƒX‚ğ¶¬‚·‚é
-				DepthSenseDevice* pDevice = XN_NEW(DepthSenseDevice, iter->Key(), getServices(), m_context, *it );
+				// ãƒ‡ãƒã‚¤ã‚¹ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ã‚’ç”Ÿæˆã™ã‚‹
+				DepthSenseDevice* pDevice = XN_NEW(DepthSenseDevice, iter->Key(), getServices(), m_context, m_depthSenseDevices[deviceIndex] );
 				iter->Value() = pDevice;
 				return pDevice;
 			}
@@ -571,7 +573,7 @@ public:
 
 protected:
 
-	// ƒfƒoƒCƒX‚ÌƒƒCƒ“ƒ‹[ƒv—pƒXƒŒƒbƒh
+	// ãƒ‡ãƒã‚¤ã‚¹ã®ãƒ¡ã‚¤ãƒ³ãƒ«ãƒ¼ãƒ—ç”¨ã‚¹ãƒ¬ãƒƒãƒ‰
 	static XN_THREAD_PROC threadFunc(XN_THREAD_PARAM pThreadParam)
 	{
 		//fprintf( stderr, "context is running\n" );
