@@ -274,7 +274,7 @@ public:
 
 			m_colorNode.setConfiguration(config);
 
-			fprintf( stderr, "Image node config is success\n" );
+			//fprintf( stderr, "Image node config is success\n" );
 		}
 		catch (std::exception& e) {
 			fprintf( stderr, "exception : %s\n", e.what() );
