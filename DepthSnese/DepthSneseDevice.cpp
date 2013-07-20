@@ -33,10 +33,10 @@
 #define DEPTHSENSE_DEPTH_RESOLUTION_X 320
 #define DEPTHSENSE_DEPTH_RESOLUTION_Y 240
 
-class OzStream : public oni::driver::StreamBase
+class DepthSenseStream : public oni::driver::StreamBase
 {
 public:
-	~OzStream()
+	~DepthSenseStream()
 	{
 		stop();
 	}
@@ -95,7 +95,7 @@ protected:
 	// Thread
 	static XN_THREAD_PROC threadFunc(XN_THREAD_PARAM pThreadParam)
 	{
-		OzStream* pStream = (OzStream*)pThreadParam;
+		DepthSenseStream* pStream = (DepthSenseStream*)pThreadParam;
 		pStream->m_running = true;
 		pStream->Mainloop();
 
@@ -116,11 +116,11 @@ protected:
 
 };
 
-class OzDepthStream : public OzStream
+class DepthSenseDepthStream : public DepthSenseStream
 {
 public:
 
-	OzDepthStream( DepthSense::Context& context, DepthSense::Node node )
+	DepthSenseDepthStream( DepthSense::Context& context, DepthSense::Node node )
 		: m_context( context )
 	{
 		m_depthNode = node.as<DepthSense::DepthNode>();
@@ -160,7 +160,7 @@ public:
 
 	static void onNewDepthSample(DepthSense::DepthNode node, DepthSense::DepthNode::NewSampleReceivedData data)
 	{
-		OzDepthStream* pStream = m_nodeMap[node];
+		DepthSenseDepthStream* pStream = m_nodeMap[node];
 		if ( pStream ) {
 			//fprintf( stderr, "onNewDepthSample\n" );
 
@@ -169,7 +169,7 @@ public:
 			pStream->m_osEvent.Set();
 		}
 		else {
-			fprintf( stderr, "onNewDepthSample : no node poiter" );
+			fprintf( stderr, "onNewDepthSample : no node pointer" );
 		}
 	}
 
@@ -229,17 +229,17 @@ private:
 	DepthSense::DepthNode m_depthNode;
 
 	std::vector<int16_t> m_data;
-	static std::map<DepthSense::DepthNode, OzDepthStream*> m_nodeMap;
+	static std::map<DepthSense::DepthNode, DepthSenseDepthStream*> m_nodeMap;
 };
 
-/*static*/ std::map<DepthSense::DepthNode, OzDepthStream*> OzDepthStream::m_nodeMap;
+/*static*/ std::map<DepthSense::DepthNode, DepthSenseDepthStream*> DepthSenseDepthStream::m_nodeMap;
 
 
-class OzImageStream : public OzStream
+class DepthSenseImageStream : public DepthSenseStream
 {
 public:
 
-	OzImageStream( DepthSense::Context& context, DepthSense::Node node )
+	DepthSenseImageStream( DepthSense::Context& context, DepthSense::Node node )
 		: m_context( context )
 	{
 		m_colorNode = node.as<DepthSense::ColorNode>();
@@ -283,7 +283,7 @@ public:
 	static void onNewColorSample( DepthSense::ColorNode node,
 		                          DepthSense::ColorNode::NewSampleReceivedData data)
 	{
-		OzImageStream* pStream = m_nodeMap[node];
+		DepthSenseImageStream* pStream = m_nodeMap[node];
 		if ( pStream ) {
 			//fprintf( stderr, "onNewColorSample\n" );
 
@@ -352,15 +352,15 @@ private:
 	DepthSense::ColorNode m_colorNode;
 
 	std::vector<unsigned char> m_data;
-	static std::map<DepthSense::ColorNode, OzImageStream*> m_nodeMap;
+	static std::map<DepthSense::ColorNode, DepthSenseImageStream*> m_nodeMap;
 };
 
-/*static*/ std::map<DepthSense::ColorNode, OzImageStream*> OzImageStream::m_nodeMap;
+/*static*/ std::map<DepthSense::ColorNode, DepthSenseImageStream*> DepthSenseImageStream::m_nodeMap;
 
-class OzDevice : public oni::driver::DeviceBase
+class DepthSenseDevice : public oni::driver::DeviceBase
 {
 public:
-	OzDevice( OniDeviceInfo* pInfo, oni::driver::DriverServices& driverServices,
+	DepthSenseDevice( OniDeviceInfo* pInfo, oni::driver::DriverServices& driverServices,
 		      DepthSense::Context& context, DepthSense::Device& device )
 		: m_pInfo(pInfo)
 		, m_driverServices(driverServices)
@@ -412,7 +412,7 @@ public:
 
 			// Depth ストリームを作成する
 			if ( it != nodes.end() ) {
-				OzDepthStream* pImage = XN_NEW( OzDepthStream, m_context, *it );
+				DepthSenseDepthStream* pImage = XN_NEW( DepthSenseDepthStream, m_context, *it );
 				return pImage;
 			}
 		}
@@ -426,12 +426,12 @@ public:
 
 			// カラーストリームを作成する
 			if ( it != nodes.end() ) {
-				OzImageStream* pImage = XN_NEW( OzImageStream, m_context, *it );
+				DepthSenseImageStream* pImage = XN_NEW( DepthSenseImageStream, m_context, *it );
 				return pImage;
 			}
 		}
 
-		m_driverServices.errorLoggerAppend("OzDevice: Can't create a stream of type %d", sensorType);
+		m_driverServices.errorLoggerAppend("DepthSenseDevice: Can't create a stream of type %d", sensorType);
 		return NULL;
 	}
 
@@ -467,8 +467,8 @@ public:
 		return rc;
 	}
 private:
-	OzDevice(const OzDevice&);
-	void operator=(const OzDevice&);
+	DepthSenseDevice(const DepthSenseDevice&);
+	void operator=(const DepthSenseDevice&);
 
 	OniDeviceInfo* m_pInfo;
 	int m_numSensors;
@@ -480,10 +480,10 @@ private:
 };
 
 
-class OzDriver : public oni::driver::DriverBase
+class DepthSenseDriver : public oni::driver::DriverBase
 {
 public:
-	OzDriver(OniDriverServices* pDriverServices) : DriverBase(pDriverServices)
+	DepthSenseDriver(OniDriverServices* pDriverServices) : DriverBase(pDriverServices)
 	{}
 
 	// ドライバを初期化する
@@ -541,7 +541,7 @@ public:
 				}
 
 				// デバイスインスタンスを生成する
-				OzDevice* pDevice = XN_NEW(OzDevice, iter->Key(), getServices(), m_context, *it );
+				DepthSenseDevice* pDevice = XN_NEW(DepthSenseDevice, iter->Key(), getServices(), m_context, *it );
 				iter->Value() = pDevice;
 				return pDevice;
 			}
@@ -576,7 +576,7 @@ protected:
 	{
 		//fprintf( stderr, "context is running\n" );
 
-		OzDriver* pDriver = (OzDriver*)pThreadParam;
+		DepthSenseDriver* pDriver = (DepthSenseDriver*)pThreadParam;
 		pDriver->m_context.startNodes();
 		pDriver->m_context.run();
 		pDriver->m_context.stopNodes();
@@ -592,4 +592,4 @@ protected:
 	std::vector<DepthSense::Device> m_depthSenseDevices;
 };
 
-ONI_EXPORT_DRIVER(OzDriver);
+ONI_EXPORT_DRIVER(DepthSenseDriver);
